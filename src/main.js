@@ -6,6 +6,11 @@ const MOVE_SPEED = 6; // 単位 / 秒（斜め移動も同じ速さ）
 const TURN_SPEED = Math.PI / 2; // ラジアン / 秒
 const MIN_ALTITUDE = 0.5; // 機体中心の最低高度
 const MAX_DELTA_TIME = 0.05; // 復帰時の大きな移動を防ぐ
+const CAMERA_OFFSET = new THREE.Vector3(0, 7, 18); // 機体基準の上方・後方
+const CAMERA_LOOK_OFFSET = new THREE.Vector3(0, 0, -2); // 少し前方を見る
+const CAMERA_FOLLOW_SPEED = 8; // 大きいほど素早く追従
+const cameraTargetPosition = new THREE.Vector3();
+const cameraLookTarget = new THREE.Vector3();
 const pressedKeys = new Set();
 const controlKeys = new Set([
   'KeyW', 'KeyS', 'KeyA', 'KeyD', 'Space', 'ShiftLeft', 'ShiftRight', 'KeyQ', 'KeyE',
@@ -21,8 +26,6 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xb9def2);
 
 const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
-camera.position.set(24, 20, 30);
-camera.lookAt(0, 0, 0);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.domElement.setAttribute('aria-label', '地面を斜め上から見渡す3D空間');
@@ -151,7 +154,17 @@ function render(time) {
   const deltaTime = previousTime === undefined ? 0 : Math.min((time - previousTime) / 1000, MAX_DELTA_TIME);
   previousTime = time;
   updateDrone(deltaTime);
+  updateCamera(deltaTime);
   renderer.render(scene, camera);
+}
+
+function updateCamera(deltaTime, immediate = false) {
+  cameraTargetPosition.copy(CAMERA_OFFSET).applyAxisAngle(upAxis, drone.rotation.y).add(drone.position);
+  cameraLookTarget.copy(CAMERA_LOOK_OFFSET).applyAxisAngle(upAxis, drone.rotation.y).add(drone.position);
+  // 時間に基づく補間で、フレームレートによる追従感の差を抑える。
+  const blend = immediate ? 1 : 1 - Math.exp(-CAMERA_FOLLOW_SPEED * deltaTime);
+  camera.position.lerp(cameraTargetPosition, blend);
+  camera.lookAt(cameraLookTarget);
 }
 
 createGround();
@@ -160,5 +173,6 @@ const drone = createDrone();
 scene.add(drone);
 setupInput();
 resize();
+updateCamera(0, true); // 起動時は後方位置から表示し、不要な飛び込みを防ぐ
 window.addEventListener('resize', resize);
 requestAnimationFrame(render);
