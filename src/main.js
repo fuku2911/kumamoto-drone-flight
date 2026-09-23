@@ -14,10 +14,10 @@ const MAX_DELTA_TIME = 0.05; // 復帰時の大きな移動を防ぐ
 const CAMERA_OFFSET = new THREE.Vector3(0, 7, 18); // 機体基準の上方・後方
 const CAMERA_LOOK_OFFSET = new THREE.Vector3(0, 0, -2); // 少し前方を見る
 const CAMERA_FOLLOW_SPEED = 8; // 大きいほど素早く追従
-const RING_RADIUS = 6;
-const CHECKPOINT_DISTANCE = 2; // 機体中心とリング中心の距離
+const RING_RADIUS = 7;
+const CHECKPOINT_DISTANCE = 3; // 初心者向けに中心からの許容距離を広げる
 const RING_POSITIONS = [
-  [0, 7, -15], [-4, 8, -32], [4, 10, -49], [-3, 9, -66], [0, 11, -83],
+  [0, 8, -20], [18, 9, -46], [36, 10, -72], [48, 9, -98], [54, 8, -124],
 ];
 let currentCheckpointIndex = 0;
 const cameraTargetPosition = new THREE.Vector3();
@@ -45,17 +45,16 @@ renderer.domElement.tabIndex = -1;
 
 function createGround() {
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(120, 120),
+    new THREE.PlaneGeometry(180, 180),
     new THREE.MeshLambertMaterial({ color: 0x80aa72 }),
   );
   ground.rotation.x = -Math.PI / 2;
-  ground.position.z = -35;
+  ground.position.set(20, 0, -60);
   scene.add(ground);
 
   // 地面の格子で遠近感を確認する。わずかに浮かせて描画のちらつきを防ぐ。
-  const grid = new THREE.GridHelper(120, 60, 0x54764b, 0x668b5c);
-  grid.position.y = 0.01;
-  grid.position.z = -35;
+  const grid = new THREE.GridHelper(180, 90, 0x54764b, 0x668b5c);
+  grid.position.set(20, 0.01, -60);
   scene.add(grid);
 }
 
@@ -142,9 +141,14 @@ function updateCheckpointAppearance() {
   checkpoints.forEach((ring, index) => {
     const active = index === currentCheckpointIndex;
     const passed = index < currentCheckpointIndex;
-    ring.material.color.setHex(active ? 0xffd83d : passed ? 0x397d53 : 0x2466a0);
-    ring.material.emissive.setHex(active ? 0xffb400 : 0x000000);
-    ring.material.emissiveIntensity = active ? 0.8 : 0;
+    ring.material.color.setHex(active ? 0xffd020 : passed ? 0x397d53 : 0x2466a0);
+    ring.material.emissive.setHex(active ? 0xffa800 : 0x000000);
+    ring.material.emissiveIntensity = active ? 1 : 0;
+    // 対象だけを不透明にし、奥の輪郭が重なっても進行先を見分けやすくする。
+    ring.material.transparent = !active;
+    ring.material.opacity = active ? 1 : passed ? 0.22 : 0.4;
+    ring.material.depthWrite = active;
+    ring.material.needsUpdate = true;
   });
 }
 
