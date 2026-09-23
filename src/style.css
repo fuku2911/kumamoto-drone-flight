@@ -19,3 +19,50 @@ body,
 canvas {
   display: block;
 }
+
+.game-ui {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  color: #f4f8fc;
+}
+[hidden] { display: none !important; }
+.panel {
+  pointer-events: auto;
+  width: min(440px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 32px;
+  border-radius: 16px;
+  background: rgb(16 27 43 / 94%);
+  box-shadow: 0 12px 40px #0004;
+  text-align: center;
+}
+h1 { margin: 0 0 24px; font-size: clamp(24px, 5vw, 32px); }
+h2 { margin: 24px 0 8px; font-size: 16px; }
+.controls { margin: 0; line-height: 1.9; color: #d4dfeb; }
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 14px 36px;
+  font: inherit;
+  font-weight: 700;
+  color: #17212e;
+  background: #ffda45;
+  cursor: pointer;
+}
+button:hover { background: #ffe785; }
+button:focus-visible { outline: 3px solid white; outline-offset: 4px; }
+.hud {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: rgb(16 27 43 / 85%);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.7;
+}
+.result { margin: 0 0 24px; font-size: 24px; font-variant-numeric: tabular-nums; }

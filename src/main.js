@@ -2,6 +2,11 @@ import './style.css';
 import * as THREE from 'three';
 
 const APP_TITLE = 'Kumamoto Drone Flight';
+const INITIAL_POSITION = new THREE.Vector3(0, 3, 0);
+const GAME_STATE = { READY: 'READY', PLAYING: 'PLAYING', FINISHED: 'FINISHED' };
+let gameState = GAME_STATE.READY;
+let startedAt = 0;
+let elapsedMilliseconds = 0;
 const MOVE_SPEED = 6; // 単位 / 秒（斜め移動も同じ速さ）
 const TURN_SPEED = Math.PI / 2; // ラジアン / 秒
 const MIN_ALTITUDE = 0.5; // 機体中心の最低高度
@@ -36,6 +41,7 @@ const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 200);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.domElement.setAttribute('aria-label', '地面を斜め上から見渡す3D空間');
 app.append(renderer.domElement);
+renderer.domElement.tabIndex = -1;
 
 function createGround() {
   const ground = new THREE.Mesh(
@@ -108,7 +114,7 @@ function createDrone() {
     drone.add(blade);
   }
 
-  drone.position.set(0, 3, 0);
+  drone.position.copy(INITIAL_POSITION);
   return drone;
 }
 
@@ -143,24 +149,26 @@ function updateCheckpointAppearance() {
 }
 
 function updateCheckpoints() {
+  if (gameState !== GAME_STATE.PLAYING) return;
   const target = checkpoints[currentCheckpointIndex];
   if (!target || drone.position.distanceToSquared(target.position) > CHECKPOINT_DISTANCE ** 2) return;
   currentCheckpointIndex += 1;
   updateCheckpointAppearance();
   if (currentCheckpointIndex === checkpoints.length) {
-    console.log('チェックポイント完了：5個のリングを順番に通過しました。');
+    finishGame();
   }
 }
 
 function setupInput() {
   window.addEventListener('keydown', (event) => {
+    if (gameState !== GAME_STATE.PLAYING) return;
     if (!controlKeys.has(event.code)) return;
     event.preventDefault();
     pressedKeys.add(event.code);
   });
   window.addEventListener('keyup', (event) => {
     if (!controlKeys.has(event.code)) return;
-    event.preventDefault();
+    if (gameState === GAME_STATE.PLAYING) event.preventDefault();
     pressedKeys.delete(event.code);
   });
   const clearInput = () => {
@@ -174,6 +182,7 @@ function setupInput() {
 }
 
 function updateDrone(deltaTime) {
+  if (gameState !== GAME_STATE.PLAYING) return;
   const turn = Number(pressedKeys.has('KeyQ')) - Number(pressedKeys.has('KeyE'));
   drone.rotation.y += turn * TURN_SPEED * deltaTime;
 
@@ -195,6 +204,10 @@ function render(time) {
   updateDrone(deltaTime);
   updateCheckpoints();
   updateCamera(deltaTime);
+  if (gameState === GAME_STATE.PLAYING) {
+    elapsedMilliseconds = performance.now() - startedAt;
+    updateHud();
+  }
   renderer.render(scene, camera);
 }
 
@@ -207,14 +220,97 @@ function updateCamera(deltaTime, immediate = false) {
   camera.lookAt(cameraLookTarget);
 }
 
+function createGameUI() {
+  const overlay = document.createElement('div');
+  overlay.className = 'game-ui';
+  overlay.innerHTML = `
+    <section class="panel" id="ready-panel" aria-labelledby="game-title">
+      <h1 id="game-title"></h1>
+      <button id="start-button" type="button">START</button>
+      <h2>操作方法</h2>
+      <p class="controls">W/S : 前後<br>A/D : 左右<br>Space/Shift : 上下<br>Q/E : 旋回</p>
+    </section>
+    <div class="hud" id="hud" hidden>
+      <div>TIME <span id="time-value">00:00.00</span></div>
+      <div id="checkpoint-value">CHECKPOINT 1 / 5</div>
+    </div>
+    <section class="panel" id="finish-panel" aria-labelledby="finish-title" hidden>
+      <h1 id="finish-title">FINISH</h1>
+      <p class="result">TIME <span id="result-time">00:00.00</span></p>
+      <button id="retry-button" type="button">RETRY</button>
+    </section>`;
+  app.append(overlay);
+  overlay.querySelector('#game-title').textContent = APP_TITLE;
+  const elements = Object.fromEntries([...overlay.querySelectorAll('[id]')].map(element => [element.id, element]));
+  elements['start-button'].addEventListener('click', startGame);
+  elements['retry-button'].addEventListener('click', resetGame);
+  return elements;
+}
+
+function formatTime(milliseconds) {
+  const hundredths = Math.floor(Math.max(0, milliseconds) / 10);
+  const minutes = Math.floor(hundredths / 6000);
+  const seconds = Math.floor(hundredths / 100) % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(hundredths % 100).padStart(2, '0')}`;
+}
+
+function updateHud() {
+  ui['time-value'].textContent = formatTime(elapsedMilliseconds);
+  ui['checkpoint-value'].textContent = `CHECKPOINT ${Math.min(currentCheckpointIndex + 1, checkpoints.length)} / ${checkpoints.length}`;
+}
+
+function startGame() {
+  if (gameState !== GAME_STATE.READY) return;
+  pressedKeys.clear();
+  previousTime = undefined;
+  elapsedMilliseconds = 0;
+  startedAt = performance.now();
+  gameState = GAME_STATE.PLAYING;
+  ui['ready-panel'].hidden = true;
+  ui.hud.hidden = false;
+  updateHud();
+  renderer.domElement.focus();
+}
+
+function finishGame() {
+  if (gameState !== GAME_STATE.PLAYING) return;
+  elapsedMilliseconds = performance.now() - startedAt;
+  gameState = GAME_STATE.FINISHED;
+  pressedKeys.clear();
+  updateHud();
+  ui.hud.hidden = true;
+  ui['result-time'].textContent = formatTime(elapsedMilliseconds);
+  ui['finish-panel'].hidden = false;
+  ui['retry-button'].focus();
+}
+
+function resetGame() {
+  gameState = GAME_STATE.READY;
+  pressedKeys.clear();
+  previousTime = undefined;
+  startedAt = 0;
+  elapsedMilliseconds = 0;
+  drone.position.copy(INITIAL_POSITION);
+  drone.rotation.set(0, 0, 0);
+  currentCheckpointIndex = 0;
+  updateCheckpointAppearance();
+  updateCamera(0, true);
+  updateHud();
+  ui['result-time'].textContent = formatTime(0);
+  ui.hud.hidden = true;
+  ui['finish-panel'].hidden = true;
+  ui['ready-panel'].hidden = false;
+  ui['start-button'].focus();
+}
+
 createGround();
 createLights();
 const drone = createDrone();
 scene.add(drone);
 const checkpoints = createCheckpoints();
-updateCheckpointAppearance();
+const ui = createGameUI();
 setupInput();
 resize();
-updateCamera(0, true); // 起動時は後方位置から表示し、不要な飛び込みを防ぐ
+resetGame();
 window.addEventListener('resize', resize);
 requestAnimationFrame(render);
