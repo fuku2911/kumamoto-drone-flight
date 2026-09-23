@@ -2,6 +2,17 @@ import './style.css';
 import * as THREE from 'three';
 
 const APP_TITLE = 'Kumamoto Drone Flight';
+const MOVE_SPEED = 6; // 単位 / 秒（斜め移動も同じ速さ）
+const TURN_SPEED = Math.PI / 2; // ラジアン / 秒
+const MIN_ALTITUDE = 0.5; // 機体中心の最低高度
+const MAX_DELTA_TIME = 0.05; // 復帰時の大きな移動を防ぐ
+const pressedKeys = new Set();
+const controlKeys = new Set([
+  'KeyW', 'KeyS', 'KeyA', 'KeyD', 'Space', 'ShiftLeft', 'ShiftRight', 'KeyQ', 'KeyE',
+]);
+const movement = new THREE.Vector3();
+const upAxis = new THREE.Vector3(0, 1, 0);
+let previousTime;
 
 document.title = APP_TITLE;
 
@@ -99,14 +110,55 @@ function resize() {
   renderer.setSize(width, height);
 }
 
-function render() {
+function setupInput() {
+  window.addEventListener('keydown', (event) => {
+    if (!controlKeys.has(event.code)) return;
+    event.preventDefault();
+    pressedKeys.add(event.code);
+  });
+  window.addEventListener('keyup', (event) => {
+    if (!controlKeys.has(event.code)) return;
+    event.preventDefault();
+    pressedKeys.delete(event.code);
+  });
+  const clearInput = () => {
+    pressedKeys.clear();
+    previousTime = undefined;
+  };
+  window.addEventListener('blur', clearInput);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) clearInput();
+  });
+}
+
+function updateDrone(deltaTime) {
+  const turn = Number(pressedKeys.has('KeyQ')) - Number(pressedKeys.has('KeyE'));
+  drone.rotation.y += turn * TURN_SPEED * deltaTime;
+
+  movement.set(
+    Number(pressedKeys.has('KeyD')) - Number(pressedKeys.has('KeyA')),
+    Number(pressedKeys.has('Space')) - Number(pressedKeys.has('ShiftLeft') || pressedKeys.has('ShiftRight')),
+    Number(pressedKeys.has('KeyS')) - Number(pressedKeys.has('KeyW')),
+  );
+  // ローカルの前方-Z・右方+Xを機体の向きに合わせてワールド座標へ変換。
+  movement.normalize().applyAxisAngle(upAxis, drone.rotation.y);
+  drone.position.addScaledVector(movement, MOVE_SPEED * deltaTime);
+  drone.position.y = Math.max(MIN_ALTITUDE, drone.position.y);
+}
+
+function render(time) {
   requestAnimationFrame(render);
+  const deltaTime = previousTime === undefined ? 0 : Math.min((time - previousTime) / 1000, MAX_DELTA_TIME);
+  previousTime = time;
+  updateDrone(deltaTime);
   renderer.render(scene, camera);
 }
 
 createGround();
 createLights();
-scene.add(createDrone());
+const drone = createDrone();
+scene.add(drone);
+setupInput();
 resize();
 window.addEventListener('resize', resize);
-render();
+requestAnimationFrame(render);
