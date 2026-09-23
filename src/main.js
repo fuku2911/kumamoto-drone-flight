@@ -9,6 +9,12 @@ const MAX_DELTA_TIME = 0.05; // 復帰時の大きな移動を防ぐ
 const CAMERA_OFFSET = new THREE.Vector3(0, 7, 18); // 機体基準の上方・後方
 const CAMERA_LOOK_OFFSET = new THREE.Vector3(0, 0, -2); // 少し前方を見る
 const CAMERA_FOLLOW_SPEED = 8; // 大きいほど素早く追従
+const RING_RADIUS = 6;
+const CHECKPOINT_DISTANCE = 2; // 機体中心とリング中心の距離
+const RING_POSITIONS = [
+  [0, 7, -15], [-4, 8, -32], [4, 10, -49], [-3, 9, -66], [0, 11, -83],
+];
+let currentCheckpointIndex = 0;
 const cameraTargetPosition = new THREE.Vector3();
 const cameraLookTarget = new THREE.Vector3();
 const pressedKeys = new Set();
@@ -33,15 +39,17 @@ app.append(renderer.domElement);
 
 function createGround() {
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(60, 60),
+    new THREE.PlaneGeometry(120, 120),
     new THREE.MeshLambertMaterial({ color: 0x80aa72 }),
   );
   ground.rotation.x = -Math.PI / 2;
+  ground.position.z = -35;
   scene.add(ground);
 
   // 地面の格子で遠近感を確認する。わずかに浮かせて描画のちらつきを防ぐ。
-  const grid = new THREE.GridHelper(60, 30, 0x54764b, 0x668b5c);
+  const grid = new THREE.GridHelper(120, 60, 0x54764b, 0x668b5c);
   grid.position.y = 0.01;
+  grid.position.z = -35;
   scene.add(grid);
 }
 
@@ -113,6 +121,37 @@ function resize() {
   renderer.setSize(width, height);
 }
 
+function createCheckpoints() {
+  const geometry = new THREE.TorusGeometry(RING_RADIUS, 0.3, 12, 64);
+  return RING_POSITIONS.map((position, index) => {
+    const ring = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial());
+    ring.position.set(...position);
+    ring.userData.order = index + 1;
+    scene.add(ring);
+    return ring;
+  });
+}
+
+function updateCheckpointAppearance() {
+  checkpoints.forEach((ring, index) => {
+    const active = index === currentCheckpointIndex;
+    const passed = index < currentCheckpointIndex;
+    ring.material.color.setHex(active ? 0xffd83d : passed ? 0x397d53 : 0x2466a0);
+    ring.material.emissive.setHex(active ? 0xffb400 : 0x000000);
+    ring.material.emissiveIntensity = active ? 0.8 : 0;
+  });
+}
+
+function updateCheckpoints() {
+  const target = checkpoints[currentCheckpointIndex];
+  if (!target || drone.position.distanceToSquared(target.position) > CHECKPOINT_DISTANCE ** 2) return;
+  currentCheckpointIndex += 1;
+  updateCheckpointAppearance();
+  if (currentCheckpointIndex === checkpoints.length) {
+    console.log('チェックポイント完了：5個のリングを順番に通過しました。');
+  }
+}
+
 function setupInput() {
   window.addEventListener('keydown', (event) => {
     if (!controlKeys.has(event.code)) return;
@@ -154,6 +193,7 @@ function render(time) {
   const deltaTime = previousTime === undefined ? 0 : Math.min((time - previousTime) / 1000, MAX_DELTA_TIME);
   previousTime = time;
   updateDrone(deltaTime);
+  updateCheckpoints();
   updateCamera(deltaTime);
   renderer.render(scene, camera);
 }
@@ -171,6 +211,8 @@ createGround();
 createLights();
 const drone = createDrone();
 scene.add(drone);
+const checkpoints = createCheckpoints();
+updateCheckpointAppearance();
 setupInput();
 resize();
 updateCamera(0, true); // 起動時は後方位置から表示し、不要な飛び込みを防ぐ
