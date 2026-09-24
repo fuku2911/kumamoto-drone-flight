@@ -4,6 +4,12 @@
 
 **Version 0.1（package.json: 0.1.0）**。PCブラウザでSTARTから5個のリングを順番に通過し、完走タイムを確認して繰り返し遊べる最小版です。プレイヤーの登録・ログイン・インストールは不要です。開発とローカル起動には下記のNode.js環境が必要です。
 
+## Play URL
+
+[Kumamoto Drone Flightをプレイする](https://kumamoto-drone-flight.fuku29112000-6f0.workers.dev)
+
+Version 0.1は[GitHubリポジトリ](https://github.com/fuku2911/kumamoto-drone-flight)へPush済みで、Cloudflare Workersで公開済みです。今後は`main`へPushすると、Cloudflareで自動ビルド・デプロイされます。
+
 ## 実装済み
 
 - Three.jsによる地面・背景・光源、基本Geometryのクアッドコプター
@@ -14,7 +20,7 @@
 - START・操作説明、タイマー・対象リング番号、FINISH・結果表示、RETRYによる全リセット
 - 静的配信用のViteビルド
 
-Version 0.1はローカルで動作確認済みです。GitHubへのPushとWebサイトの公開はまだ行っていません。
+Version 0.1はローカルで動作確認済みです。
 
 ## 遊び方
 
@@ -75,7 +81,7 @@ npm.cmd run build
 npm.cmd run preview
 ```
 
-公開用ファイルは `dist/` に出力されます。将来はこの静的ファイルをホスティングへ配置します。
+公開用ファイルは `dist/` に出力されます。`wrangler.jsonc`でこのディレクトリを配信対象に指定し、Cloudflare Workers Static Assetsとして公開しています。
 
 ## 構成
 
@@ -111,4 +117,4 @@ Three.jsを含むJavaScriptに対してViteの500 kB超のサイズ警告が出�
 
 ## 次の段階
 
-Step 8までユーザーによるプレイ確認済みです。次はGitHubへの初回Pushと静的サイト公開を、明示的な承認後に進めます。
+Step 8までユーザーによるプレイ確認済みで、Version 0.1を公開済みです。今後はプレイヤーの反応を見ながら、承認された範囲で改善を進めます。
