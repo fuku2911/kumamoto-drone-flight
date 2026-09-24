@@ -1,5 +1,27 @@
 # 開発記録
 
+## 2026-09-24 — Version 0.1の状態整理
+
+### 今回行ったこと
+- ユーザー確認済みのStep 8をac51f5c（feat: improve beginner course readability and playability）としてコミット。直後のgit statusは変更なし。
+- READMEをVersion 0.1（package.jsonは0.1.0）の説明に整理し、実装済み機能、操作、確認方法、未実装項目、既知の制約を明記。
+- ソースのキー割り当て、ゲーム状態、タイマー、カメラ設定とREADMEの一致を確認。
+- 新しいゲーム機能は追加していない。リモート未設定を確認し、GitHubリポジトリ作成・Pushは未実施。
+
+### 現在正常に動くこと
+- Step 8までユーザーによる実プレイ確認済み。START、5リング順次通過、FINISH、RETRY、再プレイが可能。
+- npm.cmd run buildの最終確認が成功。JavaScriptは540.35 kB、gzip 135.29 kB。
+- git diff --check、差分、コミット履歴、git statusを確認。
+
+### 未解決問題
+- 既知の500 kB超のビルドサイズ警告は継続。動作エラーは報告されていない。
+- 今回整理したREADME.mdと本ログは未コミット。ゲーム本体はStep 8のコミットに保存済み。
+- 公開URLはまだない。Version 0.1タグも未作成。
+
+### 次に行うこと
+- 文書整理のコミット候補：docs: document version 0.1 release state。
+- 承認後にGitHubで空リポジトリを作成し、認証・origin設定・初回Pushを行う。その後に静的サイト公開を検討する。
+
 ## 2026-09-24 — Step 8：Version 0.1の遊びやすさ調整
 
 ### 今回行ったこと
